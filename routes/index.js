@@ -14,26 +14,36 @@ router.get('/', async function(req, res) {
   var pageTotal = 0;
   var stores = [];
   var promises = [];
+  const DEBUG = true;
   console.log(`${ifoodUrl}&page=${page}&latitude=${req.query.latitude}&longitude=${req.query.longitude}`)
 
   do {
     var { data } = await axios.get(`${ifoodUrl}&page=${page}&latitude=${req.query.latitude}&longitude=${req.query.longitude}`);
+
     if (pageTotal === 0) {
       pageTotal = parseInt(data.total/data.size);
     }
     page++;
     console.log(page, pageTotal)
+    
 
-    promises.concat(data.merchants.map(async (store) => {
+    promises.push(data.merchants.map(async (store) => {
       var dataHtml = { data } = await axios.get(`${ifoodUrlDelivery}/${store.slug}/${store.id}`);
       var $ = cheerio.load(dataHtml.data)
-      var restaurantDetails = JSON.parse($('#__NEXT_DATA__').html()).props.initialState.restaurant.details;
+      var restaurantDetails = await JSON.parse($('#__NEXT_DATA__').html()).props.initialState.restaurant.details;
+
+      const [deliveryMethods] = store.deliveryMethods.filter(method => method.id == 'DEFAULT');
       
       stores.push({
         id: store.id,
         name: store.name,
         slug: store.slug,
+        segmnet: store.mainCategory.name,
+        deliveryMinTime: deliveryMethods.minTime,
+        deliveryMaxTime: deliveryMethods.maxTime,
+        priceRange: restaurantDetails.priceRange,
         userRating: store.userRating,
+        userRatingCount: restaurantDetails.userRatingCount,
         minimumOrderValue: store.minimumOrderValue,
         distance: store.distance,
         deliveryTime: store.deliveryTime,
@@ -51,9 +61,9 @@ router.get('/', async function(req, res) {
       });
     }));
   } while (page < pageTotal);
-
-  await Promise.all(promises);
   
+  await Promise.all(promises);
+
   const csv = new ObjectsToCsv(stores);
   var fileName = `${req.query.latitude}X${req.query.longitude}.csv`;
   await csv.toDisk(`./${fileName}`);
