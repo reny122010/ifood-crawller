@@ -57,6 +57,7 @@ router.get('/', async function(req, res) {
         zipCode: restaurantDetails.address.zipCode,
         streetName: restaurantDetails.address.streetName,
         streetNumber: restaurantDetails.address.streetNumber,
+        phone: restaurantDetails.telephone,
         cnpj: restaurantDetails.documents.CNPJ.value,
       });
     }));
